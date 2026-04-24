@@ -1,0 +1,410 @@
+ /* ============================================================
+     GLOBAL STYLES & CSS VARIABLES
+  ============================================================ */
+  :root {
+    --hud-bg: rgba(5, 10, 20, 0.82);
+    --hud-border: rgba(0, 200, 255, 0.25);
+    --accent: #00e5ff;
+    --accent2: #ff6b00;
+    --win: #00ff88;
+    --lose: #ff2244;
+    --text: #e8f4ff;
+    --dim: rgba(255,255,255,0.45);
+    --font-display: 'Orbitron', monospace;
+    --font-body: 'Rajdhani', sans-serif;
+    --panel-radius: 10px;
+    --shadow-glow: 0 0 18px rgba(0,229,255,0.35);
+    --shadow-glow2: 0 0 18px rgba(255,107,0,0.4);
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #000;
+    font-family: var(--font-body);
+    color: var(--text);
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+  }
+
+  /* ---- CANVAS ---- */
+  #gameCanvas {
+    display: block;
+    width: 100vw; height: 100vh;
+    position: absolute; top:0; left:0; z-index:0;
+  }
+
+  /* ============================================================
+     HUD WRAPPER
+  ============================================================ */
+  #hud {
+    position: absolute; inset: 0; z-index: 10;
+    pointer-events: none;
+  }
+
+  /* ---- TOP BAR ---- */
+  #topBar {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 20px;
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-border);
+    border-radius: 50px;
+    padding: 8px 28px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glow);
+    pointer-events: auto;
+  }
+
+  #missionLabel {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+  #missionStatus {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+  #missionStatus.success { color: var(--win); text-shadow: 0 0 12px var(--win); }
+  #missionStatus.fail { color: var(--lose); text-shadow: 0 0 12px var(--lose); }
+
+  .divider { width:1px; height:28px; background: var(--hud-border); }
+
+  /* ---- TIMER ---- */
+  #timerBlock {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  #timerLabel {
+    font-size: 9px; letter-spacing: 2px; color: var(--dim); font-family: var(--font-display);
+  }
+  #timerValue {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 900;
+    color: var(--accent);
+    transition: color 0.3s;
+    text-shadow: 0 0 10px rgba(0,229,255,0.5);
+  }
+  #timerValue.urgent { color: var(--lose); text-shadow: 0 0 14px rgba(255,34,68,0.8); animation: pulse 0.5s infinite alternate; }
+
+  @keyframes pulse { from { opacity:1; } to { opacity:0.5; } }
+
+  /* ---- ETA ---- */
+  #etaBlock {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  #etaLabel { font-size: 9px; letter-spacing: 2px; color: var(--dim); font-family: var(--font-display); }
+  #etaValue { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--accent2); }
+
+  /* ---- SPEEDOMETER (bottom center) ---- */
+  #speedoPanel {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-border);
+    border-radius: var(--panel-radius);
+    padding: 14px 32px 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glow);
+    pointer-events: auto;
+    min-width: 160px;
+  }
+
+  #speedArc {
+    position: relative;
+    width: 100px; height: 56px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  #speedArc svg { position: absolute; top: 0; left: 0; }
+
+  #speedNum {
+    font-family: var(--font-display);
+    font-size: 32px; font-weight: 900;
+    color: #fff;
+    line-height: 1;
+  }
+  #speedUnit { font-size: 10px; letter-spacing: 2px; color: var(--dim); margin-top: 2px; }
+  #gearDisplay {
+    font-family: var(--font-display);
+    font-size: 13px; color: var(--accent2);
+    margin-top: 4px; letter-spacing: 2px;
+  }
+
+  /* ---- MINIMAP (bottom right) ---- */
+  #minimapPanel {
+    position: absolute; bottom: 24px; right: 24px;
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-border);
+    border-radius: var(--panel-radius);
+    padding: 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glow);
+    pointer-events: auto;
+  }
+  #minimapLabel {
+    font-family: var(--font-display); font-size: 9px;
+    letter-spacing: 2px; color: var(--dim);
+    margin-bottom: 6px; text-align: center;
+  }
+  #minimapCanvas {
+    border-radius: 6px;
+    display: block;
+    border: 1px solid rgba(0,229,255,0.15);
+  }
+
+  /* ---- CONTROLS (bottom left) ---- */
+  #controlsPanel {
+    position: absolute; bottom: 24px; left: 24px;
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-border);
+    border-radius: var(--panel-radius);
+    padding: 14px 18px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glow);
+    pointer-events: auto;
+    min-width: 180px;
+  }
+  #controlsLabel {
+    font-family: var(--font-display); font-size: 9px;
+    letter-spacing: 2px; color: var(--dim);
+    margin-bottom: 10px;
+  }
+  .ctrl-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+    font-size: 13px; color: rgba(255,255,255,0.7);
+  }
+  .ctrl-key {
+    background: rgba(0,229,255,0.12);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: var(--font-display);
+    font-size: 10px;
+    color: var(--accent);
+    min-width: 28px; text-align: center;
+  }
+
+  /* ---- ACTION BUTTONS (top right) ---- */
+  #actionsPanel {
+    position: absolute; top: 16px; right: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    pointer-events: auto;
+  }
+
+  .hud-btn {
+    font-family: var(--font-display);
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--hud-border);
+    background: var(--hud-bg);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glow);
+    white-space: nowrap;
+  }
+  .hud-btn:hover {
+    background: rgba(0,229,255,0.15);
+    border-color: var(--accent);
+    box-shadow: 0 0 22px rgba(0,229,255,0.5);
+    transform: translateY(-1px);
+  }
+  .hud-btn.active {
+    background: rgba(0,229,255,0.25);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .hud-btn.orange {
+    color: var(--accent2);
+    border-color: rgba(255,107,0,0.3);
+    box-shadow: var(--shadow-glow2);
+  }
+  .hud-btn.orange:hover {
+    background: rgba(255,107,0,0.15);
+    border-color: var(--accent2);
+    box-shadow: 0 0 22px rgba(255,107,0,0.6);
+  }
+
+  /* ---- DISTANCE BAR (top left) ---- */
+  #distPanel {
+    position: absolute; top: 16px; left: 20px;
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-border);
+    border-radius: var(--panel-radius);
+    padding: 12px 18px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glow);
+    pointer-events: auto;
+    min-width: 200px;
+  }
+  #distLabel { font-family: var(--font-display); font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-bottom: 8px; }
+  #distBar {
+    width: 100%; height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px; overflow: hidden;
+    margin-bottom: 4px;
+  }
+  #distFill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 0.3s;
+    box-shadow: 0 0 8px rgba(0,229,255,0.5);
+  }
+  #distText { font-family: var(--font-display); font-size: 12px; color: #fff; }
+
+  /* ---- COMPASS ---- */
+  #compass {
+    position: absolute; top: 100px; left: 50%; transform: translateX(-50%);
+    width: 52px; height: 52px;
+    pointer-events: auto;
+  }
+  #compass svg { width:100%; height:100%; filter: drop-shadow(0 0 8px rgba(0,229,255,0.5)); }
+
+  /* ============================================================
+     OVERLAY SCREENS
+  ============================================================ */
+  .overlay {
+    position: absolute; inset: 0; z-index: 100;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.88);
+    backdrop-filter: blur(16px);
+    transition: opacity 0.5s;
+  }
+  .overlay.hidden { opacity:0; pointer-events:none; }
+
+  .overlay-title {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 16px;
+    line-height: 1;
+  }
+  .overlay-title.win { color: var(--win); text-shadow: 0 0 40px var(--win), 0 0 80px rgba(0,255,136,0.3); }
+  .overlay-title.lose { color: var(--lose); text-shadow: 0 0 40px var(--lose), 0 0 80px rgba(255,34,68,0.3); }
+  .overlay-title.start { color: var(--accent); text-shadow: 0 0 40px var(--accent); }
+
+  .overlay-sub {
+    font-family: var(--font-body);
+    font-size: 18px;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  .overlay-stats {
+    display: flex; gap: 40px; margin-bottom: 40px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .stat-box {
+    text-align: center;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 16px 24px;
+  }
+  .stat-val {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 900;
+    color: var(--accent);
+  }
+  .stat-lbl { font-size: 11px; letter-spacing: 2px; color: var(--dim); margin-top: 4px; }
+
+  .big-btn {
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 16px 44px;
+    border-radius: 50px;
+    border: 2px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.25s;
+    margin: 6px;
+    position: relative; overflow: hidden;
+  }
+  .big-btn::before {
+    content:'';
+    position: absolute; inset:0;
+    background: var(--accent);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.25s;
+    z-index: -1;
+  }
+  .big-btn:hover { color: #000; box-shadow: 0 0 30px rgba(0,229,255,0.6); }
+  .big-btn:hover::before { transform: scaleX(1); }
+
+  /* ---- LOADING BAR on start screen ---- */
+  #loadBar {
+    width: 280px; height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 30px;
+  }
+  #loadFill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    animation: loadAnim 1.8s ease forwards;
+  }
+  @keyframes loadAnim { to { width:100%; } }
+
+  /* decoration lines */
+  .deco-line {
+    width: 200px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 20px auto;
+  }
+
+
+
+  /* ============================================================
+     NOTIFICATION TOASTS
+  ============================================================ */
+  #toastArea {
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    z-index: 50; pointer-events: none;
+  }
+  .toast {
+    background: var(--hud-bg);
+    border: 1px solid var(--hud-border);
+    border-radius: 50px;
+    padding: 10px 28px;
+    font-family: var(--font-display);
+    font-size: 12px; letter-spacing: 1.5px;
+    backdrop-filter: blur(10px);
+    animation: toastIn 0.3s ease, toastOut 0.3s 2.5s ease forwards;
+    box-shadow: var(--shadow-glow);
+  }
+  @keyframes toastIn { from { opacity:0; transform: translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes toastOut { to { opacity:0; transform: translateY(-10px); } }
+
+  /* ============================================================
+     RESPONSIVE
+  ============================================================ */
+  @media (max-width: 600px) {
+    #controlsPanel { display: none; }
+    #distPanel { top: 80px; }
+    #actionsPanel { gap: 6px; }
+    .hud-btn { font-size: 9px; padding: 8px 12px; }
+  }
