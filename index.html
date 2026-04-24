@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style.css">
+<title>NAVDRIVE 3D — Mission Racing</title>
+<style>
+ 
+</style>
+</head>
+<body>
+
+<!-- THREE.JS CANVAS -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- ============================================================
+     HUD
+============================================================ -->
+<div id="hud">
+
+  <!-- TOP BAR: Mission + Timer + ETA -->
+  <div id="topBar">
+    <div id="missionBlock">
+      <div id="missionLabel">MISSION</div>
+      <div id="missionStatus">REACH DESTINATION</div>
+    </div>
+    <div class="divider"></div>
+    <div id="timerBlock">
+      <div id="timerLabel">TIME LEFT</div>
+      <div id="timerValue">--:--</div>
+    </div>
+    <div class="divider"></div>
+    <div id="etaBlock">
+      <div id="etaLabel">ETA</div>
+      <div id="etaValue">--:--</div>
+    </div>
+  </div>
+
+  <!-- COMPASS -->
+  <div id="compass">
+    <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="26" cy="26" r="25" stroke="rgba(0,229,255,0.3)" stroke-width="1"/>
+      <text x="26" y="10" text-anchor="middle" fill="#00e5ff" font-size="9" font-family="Orbitron" dy="0">N</text>
+      <text x="26" y="48" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="8" font-family="Orbitron">S</text>
+      <text x="48" y="30" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="8" font-family="Orbitron">E</text>
+      <text x="4" y="30" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="8" font-family="Orbitron">W</text>
+      <polygon id="compassNeedle" points="26,14 28.5,26 26,24 23.5,26" fill="#00e5ff"/>
+      <polygon points="26,38 28.5,26 26,28 23.5,26" fill="rgba(255,107,0,0.7)"/>
+      <circle cx="26" cy="26" r="2.5" fill="rgba(0,229,255,0.6)"/>
+    </svg>
+  </div>
+
+  <!-- TOP LEFT: Distance Progress -->
+  <div id="distPanel">
+    <div id="distLabel">MISSION PROGRESS</div>
+    <div id="distBar"><div id="distFill"></div></div>
+    <div id="distText">0m / 0m to destination</div>
+  </div>
+
+  <!-- TOP RIGHT: Action Buttons -->
+  <div id="actionsPanel">
+    <button class="hud-btn" id="btnShortPath" onclick="toggleShortestPath()">⚡ SHORTEST PATH</button>
+    <button class="hud-btn orange" id="btnRestart" onclick="restartGame()">↺ RESTART</button>
+    <button class="hud-btn" id="btnCamera" onclick="cycleCamera()">📷 CAMERA</button>
+  </div>
+
+  <!-- SPEEDOMETER -->
+  <div id="speedoPanel">
+    <div id="speedArc">
+      <svg width="100" height="56" viewBox="0 0 100 56">
+        <!-- Background arc -->
+        <path d="M 10 50 A 40 40 0 0 1 90 50" stroke="rgba(255,255,255,0.08)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <!-- Speed arc -->
+        <path id="speedArcPath" d="M 10 50 A 40 40 0 0 1 90 50" stroke="url(#speedGrad)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="126"/>
+        <defs>
+          <linearGradient id="speedGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#00e5ff"/>
+            <stop offset="100%" stop-color="#ff6b00"/>
+          </linearGradient>
+        </defs>
+        <!-- Tick marks -->
+        <g stroke="rgba(255,255,255,0.2)" stroke-width="1">
+          <line x1="10" y1="50" x2="14" y2="50" transform="rotate(-90,50,50)"/>
+          <line x1="10" y1="50" x2="14" y2="50" transform="rotate(-67.5,50,50)"/>
+          <line x1="10" y1="50" x2="14" y2="50" transform="rotate(-45,50,50)"/>
+          <line x1="10" y1="50" x2="14" y2="50" transform="rotate(-22.5,50,50)"/>
+          <line x1="10" y1="50" x2="14" y2="50" transform="rotate(0,50,50)"/>
+        </g>
+      </svg>
+    </div>
+    <div id="speedNum">0</div>
+    <div id="speedUnit">KM/H</div>
+    <div id="gearDisplay">N</div>
+  </div>
+
+  <!-- MINI MAP -->
+  <div id="minimapPanel">
+    <div id="minimapLabel">MINIMAP</div>
+    <canvas id="minimapCanvas" width="160" height="160"></canvas>
+  </div>
+
+  <!-- CONTROLS PANEL -->
+  <div id="controlsPanel">
+    <div id="controlsLabel">CONTROLS</div>
+    <div class="ctrl-row"><span class="ctrl-key">W</span> Accelerate</div>
+    <div class="ctrl-row"><span class="ctrl-key">S</span> Brake / Reverse</div>
+    <div class="ctrl-row"><span class="ctrl-key">A D</span> Steer</div>
+    <div class="ctrl-row"><span class="ctrl-key">SPACE</span> Handbrake</div>
+  </div>
+
+  <!-- TOAST AREA -->
+  <div id="toastArea"></div>
+
+</div><!-- #hud -->
+
+<!-- ============================================================
+     OVERLAY SCREENS
+============================================================ -->
+
+<!-- START SCREEN -->
+<div class="overlay" id="startOverlay">
+  <div class="overlay-title start">NAVDRIVE 3D</div>
+  <div class="deco-line"></div>
+  <div class="overlay-sub">Mission-Based Navigation Racing<br>Powered by Dijkstra's Algorithm</div>
+  <div id="loadBar"><div id="loadFill"></div></div>
+  <button class="big-btn" onclick="startGame()">START MISSION</button>
+  <br>
+  <div class="overlay-sub Membres">Created by Group 2<br><br> 1. D Chaitanya 2. Garima Kaiwart <br><br>3. Harish Patel 4. Manish Tiwari   <br><br>5. Archana  6. Amitesh   </div>
+</div>
+
+<!-- WIN SCREEN -->
+<div class="overlay hidden" id="winOverlay">
+  <div class="overlay-title win">MISSION COMPLETE</div>
+  <div class="deco-line"></div>
+  <div class="overlay-sub">You reached the destination!</div>
+  <div class="overlay-stats">
+    <div class="stat-box">
+      <div class="stat-val" id="winTime">--</div>
+      <div class="stat-lbl">TIME USED</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="winSpeed">--</div>
+      <div class="stat-lbl">TOP SPEED</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="winDist">--</div>
+      <div class="stat-lbl">DISTANCE</div>
+    </div>
+  </div>
+  <button class="big-btn" onclick="restartGame()">PLAY AGAIN</button>
+</div>
+
+<!-- GAME OVER SCREEN -->
+<div class="overlay hidden" id="loseOverlay">
+  <div class="overlay-title lose">TIME'S UP</div>
+  <div class="deco-line"></div>
+  <div class="overlay-sub">You didn't reach the destination in time.<br>Try the shortest path next time!</div>
+  <div class="overlay-stats">
+    <div class="stat-box">
+      <div class="stat-val" id="loseDistLeft">--</div>
+      <div class="stat-lbl">DIST. REMAINING</div>
+    </div>
+  </div>
+  <button class="big-btn" onclick="restartGame()">TRY AGAIN</button>
+</div>
+
+<!-- THREE.JS from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ================================================================
+   NAVDRIVE 3D — Complete Game Engine
+   Architecture:
+   - Section 1: Three.js Scene Setup
+   - Section 2: Map & Graph (Roads, Intersections)
+   - Section 3: Dijkstra's Algorithm
+   - Section 4: Car Physics
+   - Section 5: Traffic AI (Greedy path-following)
+   - Section 6: Environment (Buildings, Trees, Lights)
+   - Section 7: Game Logic (Timer, Win/Lose)
+   - Section 8: UI Updates & Minimap
+   - Section 9: Input Handling
+   - Section 10: Main Loop
+================================================================ */
+
+// ================================================================
+// SECTION 1: THREE.JS SCENE SETUP
+// ================================================================
+const canvas = document.getElementById('gameCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x87ceeb, 80, 350);
+
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 600);
+let cameraMode = 0; // 0=chase, 1=top, 2=hood
+const CAM_MODES = ['CHASE', 'OVERHEAD', 'HOOD'];
+
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ================================================================
+// SECTION 2: MAP GRAPH — Roads as Edges, Intersections as Nodes
+// ================================================================
+/*
+  The city grid is laid out as a graph:
+  - Nodes = intersections at (x, z) world coordinates
+  - Edges = road segments connecting intersections
+  The graph is used both for Dijkstra pathfinding and
+  for placing road geometry in the world.
+
+  Grid layout (top-down view, each cell = 40 units):
+  We create a 7×7 grid of intersections.
+*/
+
+const CELL = 40;   // road spacing
+const GRID_W = 7;  // columns
+const GRID_H = 7;  // rows
+const ROAD_W = 7;  // road width
+
+// Build node list: id -> {x, z, label}
+const nodes = [];
+const nodeMap = {}; // "col_row" -> index
+
+for (let r = 0; r < GRID_H; r++) {
+  for (let c = 0; c < GRID_W; c++) {
+    const id = r * GRID_W + c;
+    const x = (c - (GRID_W-1)/2) * CELL;
+    const z = (r - (GRID_H-1)/2) * CELL;
+    nodes.push({ id, x, z, col: c, row: r });
+    nodeMap[`${c}_${r}`] = id;
+  }
+}
+
+// Build adjacency list for the graph
+// Roads connect adjacent nodes (horizontal + vertical)
+// Some connections removed to create interesting layout
+const REMOVED_EDGES = new Set([
+  '14-21','21-14','7-14','14-7', // remove some for variety
+  '35-42','42-35',
+  '2-3','3-2',
+]);
+
+const adjList = Array.from({length: nodes.length}, () => []);
+const edges = []; // {from, to, weight}
+
+function nodeKey(a, b) { return `${Math.min(a,b)}-${Math.max(a,b)}`; }
+
+for (let r = 0; r < GRID_H; r++) {
+  for (let c = 0; c < GRID_W; c++) {
+    const id = nodeMap[`${c}_${r}`];
+    // right neighbor
+    if (c+1 < GRID_W) {
+      const rid = nodeMap[`${c+1}_${r}`];
+      const key = nodeKey(id, rid);
+      if (!REMOVED_EDGES.has(key)) {
+        const w = CELL;
+        adjList[id].push({to: rid, weight: w});
+        adjList[rid].push({to: id, weight: w});
+        edges.push({from: id, to: rid, weight: w});
+      }
+    }
+    // down neighbor
+    if (r+1 < GRID_H) {
+      const did = nodeMap[`${c}_${r+1}`];
+      const key = nodeKey(id, did);
+      if (!REMOVED_EDGES.has(key)) {
+        const w = CELL;
+        adjList[id].push({to: did, weight: w});
+        adjList[did].push({to: id, weight: w});
+        edges.push({from: id, to: did, weight: w});
+      }
+    }
+  }
+}
+
+// START and END nodes
+const START_NODE = nodeMap['0_0'];   // bottom-left
+const END_NODE   = nodeMap['6_6'];   // top-right
+
+// ================================================================
+// SECTION 3: DIJKSTRA'S SHORTEST PATH ALGORITHM
+// ================================================================
+/*
+  Dijkstra's algorithm finds the shortest path between two nodes
+  in a weighted graph. Here each edge weight = road length.
+
+  Dynamic Programming is used: we cache distances so repeated
+  sub-path queries don't recalculate from scratch.
+
+  Time Complexity: O((V + E) log V) with a min-priority queue.
+*/
+
+function dijkstra(start, end) {
+  const dist = new Array(nodes.length).fill(Infinity);
+  const prev = new Array(nodes.length).fill(-1);
+  const visited = new Array(nodes.length).fill(false);
+  dist[start] = 0;
+
+  // Simple min-heap simulation using sorted array
+  // (for a game with ~49 nodes this is plenty fast)
+  const queue = [{id: start, d: 0}];
+
+  while (queue.length > 0) {
+    // Pop minimum
+    queue.sort((a,b) => a.d - b.d);
+    const {id: u} = queue.shift();
+    if (visited[u]) continue;
+    visited[u] = true;
+    if (u === end) break;
+
+    for (const {to, weight} of adjList[u]) {
+      if (visited[to]) continue;
+      const alt = dist[u] + weight;
+      if (alt < dist[to]) {
+        dist[to] = alt;
+        prev[to] = u;
+        queue.push({id: to, d: alt});
+      }
+    }
+  }
+
+  // Reconstruct path
+  const path = [];
+  let cur = end;
+  while (cur !== -1) { path.unshift(cur); cur = prev[cur]; }
+  if (path[0] !== start) return { path: [], dist: Infinity }; // no path
+  return { path, dist: dist[end] };
+}
+
+// Cache for DP: store computed paths
+const pathCache = {};
+function cachedDijkstra(start, end) {
+  const key = `${start}-${end}`;
+  if (!pathCache[key]) pathCache[key] = dijkstra(start, end);
+  return pathCache[key];
+}
+
+// Compute main shortest path
+const { path: shortestPath, dist: shortestDist } = cachedDijkstra(START_NODE, END_NODE);
+
+// ================================================================
+// SECTION 4: ENVIRONMENT — Ground, Sky, Lighting
+// ================================================================
+
+// Sky gradient via background color
+renderer.setClearColor(0x87ceeb, 1);
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(600, 600);
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x3a7d44 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid lines on ground (grass texture simulation)
+const gridHelper = new THREE.GridHelper(600, 60, 0x2d6b38, 0x2d6b38);
+gridHelper.position.y = 0.02;
+gridHelper.material.opacity = 0.3;
+gridHelper.material.transparent = true;
+scene.add(gridHelper);
+
+// Sun (directional light)
+const sunLight = new THREE.DirectionalLight(0xfffae0, 1.4);
+sunLight.position.set(80, 120, 60);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 0.1;
+sunLight.shadow.camera.far = 500;
+sunLight.shadow.camera.left = -200;
+sunLight.shadow.camera.right = 200;
+sunLight.shadow.camera.top = 200;
+sunLight.shadow.camera.bottom = -200;
+sunLight.shadow.bias = -0.001;
+scene.add(sunLight);
+
+// Ambient
+const ambLight = new THREE.AmbientLight(0x6688aa, 0.6);
+scene.add(ambLight);
+
+// Hemisphere light (sky/ground)
+const hemi = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.4);
+scene.add(hemi);
+
+// ================================================================
+// SECTION 5: ROAD GEOMETRY BUILDING
+// ================================================================
+/*
+  Divide and Conquer concept: we render the map in chunks
+  (each road segment independently), enabling efficient
+  spatial partitioning and selective visibility culling.
+*/
+
+const roadMat = new THREE.MeshLambertMaterial({ color: 0x333340 });
+const laneMarkMat = new THREE.MeshLambertMaterial({ color: 0xf0e030 });
+const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xb0a090 });
+const intersectionMat = new THREE.MeshLambertMaterial({ color: 0x2a2a38 });
+
+// Draw road between two nodes
+function makeRoadSegment(nA, nB) {
+  const dx = nB.x - nA.x;
+  const dz = nB.z - nA.z;
+  const len = Math.sqrt(dx*dx + dz*dz);
+  const angle = Math.atan2(dz, dx);
+
+  const cx = (nA.x + nB.x)/2;
+  const cz = (nA.z + nB.z)/2;
+
+  // Main road
+  const road = new THREE.Mesh(
+    new THREE.BoxGeometry(len, 0.15, ROAD_W),
+    roadMat
+  );
+  road.position.set(cx, 0.075, cz);
+  road.rotation.y = -angle;
+  road.receiveShadow = true;
+  scene.add(road);
+
+  // Sidewalks on each side
+  for (const side of [-1, 1]) {
+    const sw = new THREE.Mesh(
+      new THREE.BoxGeometry(len, 0.12, 2.5),
+      sidewalkMat
+    );
+    sw.position.set(cx, 0.06, cz);
+    sw.rotation.y = -angle;
+    sw.position.x += Math.sin(angle) * (ROAD_W/2 + 1.25) * side;
+    sw.position.z -= Math.cos(angle) * (ROAD_W/2 + 1.25) * side;
+    scene.add(sw);
+  }
+
+  // Center dashed lane marks
+  const dashCount = Math.floor(len / 8);
+  for (let i = 0; i < dashCount; i++) {
+    const t = (i + 0.5) / dashCount;
+    const mx = nA.x + dx * t;
+    const mz = nA.z + dz * t;
+    const dash = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.18, 0.2),
+      laneMarkMat
+    );
+    dash.position.set(mx, 0.09, mz);
+    dash.rotation.y = -angle;
+    scene.add(dash);
+  }
+}
+
+// Draw intersection squares
+function makeIntersection(node) {
+  const inter = new THREE.Mesh(
+    new THREE.BoxGeometry(ROAD_W + 1, 0.16, ROAD_W + 1),
+    intersectionMat
+  );
+  inter.position.set(node.x, 0.08, node.z);
+  inter.receiveShadow = true;
+  scene.add(inter);
+}
+
+// Build all road segments
+edges.forEach(e => {
+  makeRoadSegment(nodes[e.from], nodes[e.to]);
+});
+nodes.forEach(n => makeIntersection(n));
+
+// ================================================================
+// SECTION 6: BUILDINGS & TREES
+// ================================================================
+
+const buildingColors = [0x8899aa, 0x7788aa, 0x99aabb, 0xaabbcc, 0x778899, 0x556677];
+const windowMat = new THREE.MeshLambertMaterial({ color: 0xffe090, emissive: 0xffe090, emissiveIntensity: 0.3 });
+
+// Collision list — stores AABB for every building/tree (for car collision)
+// Each entry: { minX, maxX, minZ, maxZ }
+const collidables = [];
+
+function isOnRoad(x, z) {
+  // Check if point is near a road segment
+  for (const e of edges) {
+    const a = nodes[e.from], b = nodes[e.to];
+    const dx = b.x-a.x, dz = b.z-a.z;
+    const len2 = dx*dx+dz*dz;
+    const t = Math.max(0, Math.min(1, ((x-a.x)*dx+(z-a.z)*dz)/len2));
+    const px = a.x+t*dx, pz = a.z+t*dz;
+    const dist = Math.sqrt((x-px)**2+(z-pz)**2);
+    if (dist < ROAD_W/2 + 7) return true;
+  }
+  return false;
+}
+
+// Check if a building footprint (AABB) overlaps ANY road segment
+// This prevents buildings from partially hanging over roads
+function buildingOverlapsRoad(x, z, hw, hd) {
+  // Test all 4 corners + center of building footprint
+  const testPoints = [
+    [x, z],
+    [x - hw, z - hd], [x + hw, z - hd],
+    [x - hw, z + hd], [x + hw, z + hd],
+    [x - hw, z],      [x + hw, z],
+    [x, z - hd],      [x, z + hd],
+  ];
+  for (const [px, pz] of testPoints) {
+    if (isOnRoad(px, pz)) return true;
+  }
+  return false;
+}
+
+const WORLD_HALF = (GRID_W-1)/2 * CELL + 10;
+
+// Divide and conquer: split world into quadrants for object placement
+function placeObjectsInRegion(x0, z0, x1, z1, depth) {
+  if (depth === 0) {
+    // Place object at region center with only a small random offset
+    // (limited to 20% of region size so objects stay inside their block)
+    const regionW = x1 - x0;
+    const regionD = z1 - z0;
+    const cx = (x0+x1)/2 + (Math.random()-0.5) * regionW * 0.2;
+    const cz = (z0+z1)/2 + (Math.random()-0.5) * regionD * 0.2;
+    if (!isOnRoad(cx, cz)) {
+      if (Math.random() < 0.65) placeBuilding(cx, cz);
+      else placeTree(cx, cz);
+    }
+    return;
+  }
+  // Divide region into 4 quadrants
+  const mx = (x0+x1)/2, mz = (z0+z1)/2;
+  placeObjectsInRegion(x0, z0, mx, mz, depth-1);
+  placeObjectsInRegion(mx, z0, x1, mz, depth-1);
+  placeObjectsInRegion(x0, mz, mx, z1, depth-1);
+  placeObjectsInRegion(mx, mz, x1, z1, depth-1);
+}
+
+function placeBuilding(x, z) {
+  const w = 6 + Math.random()*8;
+  const h = 8 + Math.random()*20;
+  const d = 6 + Math.random()*8;
+
+  // Reject if any corner of this building touches a road
+  if (buildingOverlapsRoad(x, z, w/2, d/2)) return;
+
+  const color = buildingColors[Math.floor(Math.random()*buildingColors.length)];
+  const bMat = new THREE.MeshLambertMaterial({ color });
+
+  const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bMat);
+  building.position.set(x, h/2, z);
+  building.castShadow = true;
+  building.receiveShadow = true;
+  scene.add(building);
+
+  // Register AABB for collision
+  collidables.push({ minX: x - w/2 - 0.3, maxX: x + w/2 + 0.3, minZ: z - d/2 - 0.3, maxZ: z + d/2 + 0.3 });
+
+  // Windows
+  const rows = Math.floor(h/4);
+  const cols = Math.floor(w/3);
+  for (let r=0; r<rows; r++) {
+    for (let c=0; c<cols; c++) {
+      if (Math.random() < 0.7) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), windowMat);
+        win.position.set(x - w/2 + (c+0.8)*w/cols, r*4+3, z + d/2 + 0.1);
+        scene.add(win);
+      }
+    }
+  }
+}
+
+function placeTree(x, z) {
+  // Don't place tree if it's near a road
+  if (isOnRoad(x, z)) return;
+
+  const trunkH = 2 + Math.random()*2;
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c3d1e });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, trunkH, 6), trunkMat);
+  trunk.position.set(x, trunkH/2, z);
+  trunk.castShadow = true;
+  scene.add(trunk);
+
+  const leafColor = Math.random() < 0.7 ? 0x2d6b38 : 0x3d7d48;
+  const leafMat = new THREE.MeshLambertMaterial({ color: leafColor });
+  const leafR = 2 + Math.random()*2;
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(leafR, 7, 5), leafMat);
+  leaves.position.set(x, trunkH + leafR*0.7, z);
+  leaves.castShadow = true;
+  scene.add(leaves);
+
+  // Register AABB for tree trunk collision
+  collidables.push({ minX: x - 1.0, maxX: x + 1.0, minZ: z - 1.0, maxZ: z + 1.0 });
+}
+
+// Generate buildings & trees via divide and conquer
+placeObjectsInRegion(-WORLD_HALF, -WORLD_HALF, WORLD_HALF, WORLD_HALF, 5);
+
+// Traffic lights at intersections
+function makeTrafficLight(x, z) {
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5, 6), poleMat);
+  pole.position.set(x + 4, 2.5, z + 4);
+  pole.castShadow = true;
+  scene.add(pole);
+
+  const boxMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.4, 0.6), boxMat);
+  box.position.set(x + 4, 5.5, z + 4);
+  scene.add(box);
+
+  const lights = ['red','yellow','green'];
+  lights.forEach((c, i) => {
+    const lMat = new THREE.MeshLambertMaterial({
+      color: c === 'red' ? 0xff2244 : c === 'yellow' ? 0xffdd00 : 0x00ff44,
+      emissive: c === 'green' ? 0x00ff44 : 0x000000,
+      emissiveIntensity: c === 'green' ? 0.5 : 0
+    });
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), lMat);
+    light.position.set(x + 4, 6.3 - i*0.8, z + 4 + 0.35);
+    scene.add(light);
+  });
+}
+
+// Add traffic lights to some intersections
+nodes.forEach((n, i) => {
+  if (i % 8 === 0) makeTrafficLight(n.x, n.z);
+});
+
+// ================================================================
+// SECTION 7: START & END MARKERS
+// ================================================================
+
+function makeMarker(node, color, label) {
+  // Pillar
+  const mat = new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.5 });
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 8, 12), mat);
+  pillar.position.set(node.x, 4, node.z);
+  scene.add(pillar);
+
+  // Floating ring
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(4, 0.3, 8, 32),
+    new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.8 })
+  );
+  ring.rotation.x = Math.PI/2;
+  ring.position.set(node.x, 1.5, node.z);
+  ring.userData.isMarker = true;
+  scene.add(ring);
+  return ring;
+}
+
+const startMarker = makeMarker(nodes[START_NODE], 0x00ff88, 'START');
+const endMarker   = makeMarker(nodes[END_NODE],   0xff6b00, 'END');
+
+// ================================================================
+// SECTION 8: SHORTEST PATH VISUALIZATION
+// ================================================================
+
+let pathObjects = [];
+let showingPath = false;
+
+function buildPathVisual(path, color) {
+  // Remove old objects
+  pathObjects.forEach(o => scene.remove(o));
+  pathObjects = [];
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = nodes[path[i]], b = nodes[path[i+1]];
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const len = Math.sqrt(dx*dx + dz*dz);
+    const cx = (a.x + b.x) / 2, cz = (a.z + b.z) / 2;
+    const angle = Math.atan2(dz, dx);
+
+    // Glowing road stripe — bright cyan
+    const mat = new THREE.MeshLambertMaterial({
+      color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 1.2,
+      transparent: true, opacity: 0.85
+    });
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(len, 0.35, 2.6), mat);
+    seg.position.set(cx, 0.55, cz);
+    seg.rotation.y = -angle;
+    seg.userData.baseEmissive = 1.2;
+    seg.userData.pathSeg = true;
+    scene.add(seg);
+    pathObjects.push(seg);
+
+    // Outer glow stripe (wider, more transparent)
+    const glowMat = new THREE.MeshLambertMaterial({
+      color: 0x00aaff, emissive: 0x0055ff, emissiveIntensity: 0.5,
+      transparent: true, opacity: 0.3
+    });
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(len, 0.2, 5), glowMat);
+    glow.position.set(cx, 0.42, cz);
+    glow.rotation.y = -angle;
+    glow.userData.glowSeg = true;
+    scene.add(glow);
+    pathObjects.push(glow);
+
+    // Arrows pointing direction of travel
+    const arrowMat = new THREE.MeshLambertMaterial({
+      color: 0xffffff, emissive: 0x00ffff, emissiveIntensity: 1.0,
+      transparent: true, opacity: 0.95
+    });
+    const arrowCount = Math.max(1, Math.floor(len / 10));
+    for (let j = 1; j <= arrowCount; j++) {
+      const t = j / (arrowCount + 1);
+      const ax = a.x + dx * t, az = a.z + dz * t;
+      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.6, 4), arrowMat);
+      arrow.position.set(ax, 0.85, az);
+      arrow.rotation.y = Math.PI / 2 - angle;
+      arrow.rotation.x = Math.PI / 2;
+      arrow.userData.arrowIdx = j + i * 10; // stagger phase
+      scene.add(arrow);
+      pathObjects.push(arrow);
+    }
+
+    // Node dot at each intersection on path
+    const dotMat = new THREE.MeshLambertMaterial({
+      color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 1.5,
+      transparent: true, opacity: 0.9
+    });
+    const dot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.4, 12), dotMat);
+    dot.position.set(a.x, 0.65, a.z);
+    dot.userData.dotNode = true;
+    scene.add(dot);
+    pathObjects.push(dot);
+  }
+
+  // Final destination dot
+  const endN = nodes[path[path.length-1]];
+  const endDotMat = new THREE.MeshLambertMaterial({
+    color: 0xff6b00, emissive: 0xff6b00, emissiveIntensity: 2.0,
+    transparent: true, opacity: 1.0
+  });
+  const endDot = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.5, 16), endDotMat);
+  endDot.position.set(endN.x, 0.7, endN.z);
+  scene.add(endDot);
+  pathObjects.push(endDot);
+}
+
+function toggleShortestPath() {
+  showingPath = !showingPath;
+  const btn = document.getElementById('btnShortPath');
+  if (showingPath) {
+    buildPathVisual(shortestPath, 0x00e5ff);
+    btn.classList.add('active');
+    showToast(`⚡ Shortest Path: ${Math.round(shortestDist)}m — Follow the CYAN line!`);
+  } else {
+    pathObjects.forEach(o => scene.remove(o));
+    pathObjects = [];
+    btn.classList.remove('active');
+    showToast('Path hidden');
+  }
+}
+
+// ================================================================
+// SECTION 9: CAR PHYSICS
+// ================================================================
+
+// Car mesh
+function buildCar() {
+  const carGroup = new THREE.Group();
+
+  // Body
+  const bodyMat = new THREE.MeshPhongMaterial({ color: 0xff3300, shininess: 120, specular: 0x880000 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.75, 4.5), bodyMat);
+  body.position.y = 0.75;
+  body.castShadow = true;
+  carGroup.add(body);
+
+  // Roof
+  const roofMat = new THREE.MeshPhongMaterial({ color: 0xcc2200, shininess: 100 });
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 2.5), roofMat);
+  roof.position.set(0, 1.35, -0.2);
+  roof.castShadow = true;
+  carGroup.add(roof);
+
+  // Windshield
+  const glassMat = new THREE.MeshPhongMaterial({ color: 0x88ccff, transparent: true, opacity: 0.6, shininess: 200 });
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.5, 0.05), glassMat);
+  windshield.position.set(0, 1.25, 1.02);
+  windshield.rotation.x = -0.25;
+  carGroup.add(windshield);
+
+  const rearWind = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.5, 0.05), glassMat);
+  rearWind.position.set(0, 1.25, -1.45);
+  rearWind.rotation.x = 0.25;
+  carGroup.add(rearWind);
+
+  // Wheels
+  const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 60 });
+  const rimMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 200 });
+  const wheelPositions = [
+    [1.25, 0.4, 1.4], [-1.25, 0.4, 1.4],
+    [1.25, 0.4, -1.4], [-1.25, 0.4, -1.4]
+  ];
+  const wheelMeshes = [];
+  wheelPositions.forEach(([x,y,z]) => {
+    const wg = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.35, 16), wheelMat);
+    tire.rotation.z = Math.PI/2;
+    wg.add(tire);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.37, 8), rimMat);
+    rim.rotation.z = Math.PI/2;
+    wg.add(rim);
+    wg.position.set(x, y, z);
+    carGroup.add(wg);
+    wheelMeshes.push(wg);
+  });
+
+  // Headlights
+  const hlMat = new THREE.MeshPhongMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 0.8 });
+  [[-0.7,0.75,2.26],[0.7,0.75,2.26]].forEach(([x,y,z]) => {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.25,0.05), hlMat);
+    hl.position.set(x,y,z);
+    carGroup.add(hl);
+    // Light source
+    const pl = new THREE.SpotLight(0xffffee, 1.5, 30, Math.PI/6, 0.3);
+    pl.position.set(x, y, z+0.5);
+    pl.target.position.set(x, 0, z+15);
+    carGroup.add(pl);
+    carGroup.add(pl.target);
+  });
+
+  // Taillights
+  const tlMat = new THREE.MeshPhongMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.7 });
+  [[-0.7,0.75,-2.26],[0.7,0.75,-2.26]].forEach(([x,y,z]) => {
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.25,0.05), tlMat);
+    tl.position.set(x,y,z);
+    carGroup.add(tl);
+  });
+
+  return { group: carGroup, wheels: wheelMeshes };
+}
+
+const { group: carMesh, wheels: carWheels } = buildCar();
+
+// Start position
+const startNode = nodes[START_NODE];
+carMesh.position.set(startNode.x, 0, startNode.z);
+scene.add(carMesh);
+
+// Physics state
+const car = {
+  pos: new THREE.Vector3(startNode.x, 0, startNode.z),
+  velocity: 0,
+  angle: 0,
+  steer: 0,
+  wheelRot: 0,
+  topSpeed: 28,
+  accel: 10,
+  brakeForce: 20,
+  friction: 4,
+  steerSpeed: 1.8,
+  maxSteer: 0.55,
+  handbrake: false,
+  distTraveled: 0,
+  topSpeedReached: 0,
+};
+
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; });
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ================================================================
+// COLLISION RESOLUTION — AABB push-out
+// ================================================================
+/*
+  For each collidable building/tree, we check if the car's AABB
+  overlaps it. If so, we find the minimum-penetration axis
+  (MTV — Minimum Translation Vector) and push the car out along
+  that axis. Velocity along that axis is zeroed (bounce-stop).
+*/
+function resolveCollisions(carHX, carHZ) {
+  // We run up to 3 iterations to resolve multiple simultaneous overlaps
+  for (let iter = 0; iter < 3; iter++) {
+    let anyCollision = false;
+
+    for (const box of collidables) {
+      const bCX = (box.minX + box.maxX) / 2;
+      const bCZ = (box.minZ + box.maxZ) / 2;
+      const bHX = (box.maxX - box.minX) / 2;
+      const bHZ = (box.maxZ - box.minZ) / 2;
+
+      const overlapX = (carHX + bHX) - Math.abs(car.pos.x - bCX);
+      const overlapZ = (carHZ + bHZ) - Math.abs(car.pos.z - bCZ);
+
+      // No collision if either axis has no overlap
+      if (overlapX <= 0 || overlapZ <= 0) continue;
+
+      anyCollision = true;
+
+      // Push out along the MINIMUM overlap axis (least work to escape)
+      if (overlapX < overlapZ) {
+        // Push along X
+        const sign = car.pos.x < bCX ? -1 : 1;
+        car.pos.x += sign * (overlapX + 0.05); // small epsilon to prevent re-entry
+        // Dampen velocity — don't fully zero it so car can slide along wall
+        car.velocity *= 0.4;
+      } else {
+        // Push along Z
+        const sign = car.pos.z < bCZ ? -1 : 1;
+        car.pos.z += sign * (overlapZ + 0.05);
+        car.velocity *= 0.4;
+      }
+    }
+
+    if (!anyCollision) break;
+  }
+}
+
+// Safety: if car spawned inside a collider, push it out immediately
+function unstuckCar() {
+  for (let i = 0; i < 10; i++) {
+    resolveCollisions(1.3, 2.5);
+  }
+}
+
+function updateCar(dt) {
+  const accelInput = keys['KeyW'] || keys['ArrowUp'];
+  const brakeInput = keys['KeyS'] || keys['ArrowDown'];
+  const leftInput  = keys['KeyA'] || keys['ArrowLeft'];
+  const rightInput = keys['KeyD'] || keys['ArrowRight'];
+  const hbrake     = keys['Space'];
+
+  // Acceleration & braking
+  const speed = Math.abs(car.velocity);
+  if (accelInput) {
+    car.velocity += car.accel * dt;
+  } else if (brakeInput) {
+    if (car.velocity > 0.5) car.velocity -= car.brakeForce * dt;
+    else if (car.velocity > -car.topSpeed * 0.4) car.velocity -= car.accel * 0.6 * dt;
+  }
+
+  // Handbrake
+  if (hbrake) car.velocity *= 0.92;
+
+  // Friction
+  car.velocity *= (1 - car.friction * dt / Math.max(speed, 1) * 0.3);
+  if (Math.abs(car.velocity) < 0.01) car.velocity = 0;
+
+  // Clamp speed
+  car.velocity = Math.max(-car.topSpeed * 0.4, Math.min(car.topSpeed, car.velocity));
+
+  // Steering (Ackermann-inspired smooth turning)
+  const steerTarget = leftInput ? -1 : rightInput ? 1 : 0;
+  car.steer += (steerTarget - car.steer) * car.steerSpeed * dt * 3;
+  car.steer = Math.max(-1, Math.min(1, car.steer));
+
+  // Only steer when moving
+  const speedFactor = Math.min(Math.abs(car.velocity) / 5, 1);
+  const steerAmt = car.steer * car.maxSteer * speedFactor * Math.sign(car.velocity);
+  car.angle -= steerAmt * Math.abs(car.velocity) * dt;
+
+  // Move
+  const dx = Math.sin(car.angle) * car.velocity * dt;
+  const dz = Math.cos(car.angle) * car.velocity * dt;
+  car.pos.x += dx;
+  car.pos.z += dz;
+
+  // ---- BUILDING COLLISION DETECTION & RESPONSE ----
+  // Car is approx 2.2 wide x 4.5 long — use a half-extent box of 1.3 x 2.5
+  const CAR_HX = 1.3; // half-width
+  const CAR_HZ = 2.5; // half-length
+  // We test axis-aligned (ignoring car rotation for simplicity — good enough for grid city)
+  resolveCollisions(CAR_HX, CAR_HZ);
+
+  // Clamp to world bounds
+  car.pos.x = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, car.pos.x));
+  car.pos.z = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, car.pos.z));
+
+  // Update mesh
+  carMesh.position.copy(car.pos);
+  carMesh.rotation.y = car.angle;
+
+  // Wheel spin
+  car.wheelRot += car.velocity * dt * 1.2;
+  carWheels.forEach((w, i) => {
+    w.rotation.y = (i < 2) ? car.steer * 0.4 : 0;
+    const axis = new THREE.Vector3(0, 0, 1);
+    // tire rotation (local z axis after group rotation)
+  });
+
+  // Track max speed
+  const kmh = Math.abs(car.velocity) * 3.6;
+  if (kmh > car.topSpeedReached) car.topSpeedReached = kmh;
+
+  // Track distance
+  car.distTraveled += Math.abs(car.velocity) * dt;
+}
+
+// ================================================================
+// SECTION 10: TRAFFIC AI — Greedy path following
+// ================================================================
+/*
+  Traffic cars use a greedy method: at each intersection,
+  they pick the neighbor closest to their destination.
+  This is computationally efficient for many simultaneous agents.
+*/
+
+const TRAFFIC_COUNT = 8;
+const trafficCars = [];
+const trafficColors = [0x2255ff, 0xffaa00, 0xffffff, 0x00ccaa, 0xaa00ff, 0xffcc00, 0x00aaff, 0xff5500];
+
+function buildTrafficCar(color) {
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshPhongMaterial({ color, shininess: 80 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 3.8), bodyMat);
+  body.position.y = 0.6;
+  g.add(body);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 2.0), bodyMat);
+  roof.position.set(0, 1.1, -0.1);
+  g.add(roof);
+  const wMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  [[0.95,0.35,1.1],[-0.95,0.35,1.1],[0.95,0.35,-1.1],[-0.95,0.35,-1.1]].forEach(([x,y,z]) => {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.28, 10), wMat);
+    w.rotation.z = Math.PI/2;
+    w.position.set(x, y, z);
+    g.add(w);
+  });
+  return g;
+}
+
+function spawnTrafficCar(index) {
+  const startIdx = Math.floor(Math.random() * nodes.length);
+  const endIdx = Math.floor(Math.random() * nodes.length);
+  const { path } = cachedDijkstra(startIdx, endIdx);
+  if (path.length < 2) return null;
+
+  const group = buildTrafficCar(trafficColors[index % trafficColors.length]);
+  const startN = nodes[path[0]];
+  group.position.set(startN.x, 0, startN.z);
+  scene.add(group);
+
+  return {
+    mesh: group,
+    path,
+    pathIdx: 0,
+    speed: 6 + Math.random() * 5,
+    angle: 0,
+  };
+}
+
+for (let i = 0; i < TRAFFIC_COUNT; i++) {
+  const tc = spawnTrafficCar(i);
+  if (tc) trafficCars.push(tc);
+}
+
+function updateTraffic(dt) {
+  trafficCars.forEach((tc, idx) => {
+    if (tc.pathIdx >= tc.path.length - 1) {
+      const newEnd = Math.floor(Math.random() * nodes.length);
+      const { path } = cachedDijkstra(tc.path[tc.path.length-1], newEnd);
+      if (path.length >= 2) { tc.path = path; tc.pathIdx = 0; }
+      return;
+    }
+
+    const targetNode = nodes[tc.path[tc.pathIdx+1]];
+    const dx = targetNode.x - tc.mesh.position.x;
+    const dz = targetNode.z - tc.mesh.position.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+
+    if (dist < 1.5) {
+      tc.pathIdx++;
+    } else {
+      const targetAngle = Math.atan2(dx, dz);
+      let da = targetAngle - tc.angle;
+      while (da > Math.PI) da -= 2*Math.PI;
+      while (da < -Math.PI) da += 2*Math.PI;
+      tc.angle += da * Math.min(1, 3 * dt);
+      tc.mesh.rotation.y = tc.angle;
+
+      // Check ahead — if another traffic car is too close in front, slow/stop
+      const TRAFFIC_RADIUS = 3.0;
+      let blocked = false;
+
+      // --- Traffic vs Traffic collision (circle vs circle) ---
+      trafficCars.forEach((other, oidx) => {
+        if (oidx === idx) return;
+        const ox = other.mesh.position.x - tc.mesh.position.x;
+        const oz = other.mesh.position.z - tc.mesh.position.z;
+        const d = Math.sqrt(ox*ox + oz*oz);
+        if (d < TRAFFIC_RADIUS * 2 && d > 0.01) {
+          // Push apart — each car moves half the overlap distance
+          const overlap = (TRAFFIC_RADIUS * 2) - d;
+          const nx = ox / d, nz = oz / d; // normalised push direction
+          tc.mesh.position.x -= nx * overlap * 0.5;
+          tc.mesh.position.z -= nz * overlap * 0.5;
+          other.mesh.position.x += nx * overlap * 0.5;
+          other.mesh.position.z += nz * overlap * 0.5;
+          // If very close ahead, block movement
+          if (d < TRAFFIC_RADIUS * 1.2) blocked = true;
+        }
+      });
+
+      // --- Traffic vs Player collision (circle vs circle) ---
+      const px = car.pos.x - tc.mesh.position.x;
+      const pz = car.pos.z - tc.mesh.position.z;
+      const pd = Math.sqrt(px*px + pz*pz);
+      const PLAYER_RADIUS = 2.8;
+      if (pd < TRAFFIC_RADIUS + PLAYER_RADIUS && pd > 0.01) {
+        const overlap = (TRAFFIC_RADIUS + PLAYER_RADIUS) - pd;
+        const nx = px / pd, nz = pz / pd;
+        // Push traffic car away from player
+        tc.mesh.position.x -= nx * overlap * 0.6;
+        tc.mesh.position.z -= nz * overlap * 0.6;
+        // Push player away from traffic car
+        car.pos.x += nx * overlap * 0.4;
+        car.pos.z += nz * overlap * 0.4;
+        // Slow player velocity on impact
+        car.velocity *= 0.55;
+        if (pd < (TRAFFIC_RADIUS + PLAYER_RADIUS) * 0.8) blocked = true;
+      }
+
+      // Move traffic car (skip if blocked right ahead)
+      if (!blocked) {
+        tc.mesh.position.x += Math.sin(tc.angle) * tc.speed * dt;
+        tc.mesh.position.z += Math.cos(tc.angle) * tc.speed * dt;
+      }
+
+      // Clamp traffic to world bounds
+      tc.mesh.position.x = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, tc.mesh.position.x));
+      tc.mesh.position.z = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, tc.mesh.position.z));
+    }
+  });
+}
+
+// ================================================================
+// SECTION 11: CAMERA SYSTEM
+// ================================================================
+
+let camOffset = new THREE.Vector3(0, 6, -14);
+const camLookOffset = new THREE.Vector3(0, 1, 0);
+
+function cycleCamera() {
+  cameraMode = (cameraMode + 1) % 3;
+  showToast('📷 Camera: ' + CAM_MODES[cameraMode]);
+  switch(cameraMode) {
+    case 0: camOffset.set(0, 6, -14); break;
+    case 1: camOffset.set(0, 80, 0); break;
+    case 2: camOffset.set(0, 1.5, 1.5); break;
+  }
+}
+
+function updateCamera() {
+  const carQuat = carMesh.quaternion;
+  const localOffset = camOffset.clone().applyQuaternion(carQuat);
+  const targetPos = car.pos.clone().add(localOffset);
+
+  camera.position.lerp(targetPos, cameraMode === 1 ? 0.05 : 0.08);
+
+  if (cameraMode === 1) {
+    camera.lookAt(car.pos);
+  } else {
+    const lookAt = car.pos.clone().add(camLookOffset);
+    camera.lookAt(lookAt);
+  }
+}
+
+// ================================================================
+// SECTION 12: GAME LOGIC — Timer, Win/Lose
+// ================================================================
+
+let gameState = 'start'; // 'start','playing','win','lose'
+let totalTime = 90;
+let timeLeft = totalTime;
+let gameTimer = null;
+let gameStarted = false;
+let startTime = 0;
+
+// Calculate realistic timer based on Dijkstra shortest path + buffer
+const AVERAGE_SPEED = 10; // m/s
+const estimatedTravelTime = shortestDist / AVERAGE_SPEED;
+totalTime = Math.round(estimatedTravelTime * 1.5 + 20); // +50% buffer + 20s grace
+timeLeft = totalTime;
+
+const endNode = nodes[END_NODE];
+const initDist = Math.sqrt(
+  (car.pos.x - endNode.x)**2 + (car.pos.z - endNode.z)**2
+);
+let maxDist = initDist;
+
+function startGame() {
+  document.getElementById('startOverlay').classList.add('hidden');
+  gameState = 'playing';
+  gameStarted = true;
+  startTime = performance.now();
+  document.getElementById('timerValue').textContent = formatTime(timeLeft);
+
+  // Auto-highlight shortest path from the start
+  showingPath = true;
+  buildPathVisual(shortestPath, 0x00e5ff);
+  document.getElementById('btnShortPath').classList.add('active');
+
+  unstuckCar(); // Safety: clear any spawn-time overlaps
+  showToast('🏁 Mission Started! Follow the CYAN path to destination!');
+}
+
+function restartGame() {
+  // Reset car
+  car.pos.set(startNode.x, 0, startNode.z);
+  car.velocity = 0;
+  car.angle = 0;
+  car.steer = 0;
+  car.distTraveled = 0;
+  car.topSpeedReached = 0;
+  carMesh.position.copy(car.pos);
+  carMesh.rotation.y = car.angle;
+
+  // Reset timer
+  timeLeft = totalTime;
+  gameState = 'playing';
+  gameStarted = true;
+  startTime = performance.now();
+
+  // Hide overlays
+  ['winOverlay','loseOverlay','startOverlay'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+
+  document.getElementById('missionStatus').textContent = 'REACH DESTINATION';
+  document.getElementById('missionStatus').className = '';
+
+  // Re-show shortest path
+  showingPath = true;
+  buildPathVisual(shortestPath, 0x00e5ff);
+  document.getElementById('btnShortPath').classList.add('active');
+
+  unstuckCar(); // Safety clear
+  showToast('↺ Mission Restarted — follow the CYAN path!');
+}
+
+function formatTime(s) {
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function checkWinLose() {
+  // Check proximity to end node
+  const dx = car.pos.x - endNode.x;
+  const dz = car.pos.z - endNode.z;
+  const dist = Math.sqrt(dx*dx + dz*dz);
+
+  if (dist < 5) {
+    triggerWin();
+    return;
+  }
+
+  if (timeLeft <= 0) {
+    triggerLose(dist);
+  }
+}
+
+function triggerWin() {
+  gameState = 'win';
+  const elapsed = (performance.now() - startTime) / 1000;
+  document.getElementById('winTime').textContent = formatTime(elapsed);
+  document.getElementById('winSpeed').textContent = Math.round(car.topSpeedReached) + ' km/h';
+  document.getElementById('winDist').textContent = Math.round(car.distTraveled) + 'm';
+  document.getElementById('missionStatus').textContent = '✓ COMPLETE';
+  document.getElementById('missionStatus').className = 'success';
+  document.getElementById('winOverlay').classList.remove('hidden');
+}
+
+function triggerLose(distLeft) {
+  gameState = 'lose';
+  document.getElementById('loseDistLeft').textContent = Math.round(distLeft) + 'm';
+  document.getElementById('missionStatus').textContent = '✗ FAILED';
+  document.getElementById('missionStatus').className = 'fail';
+  document.getElementById('loseOverlay').classList.remove('hidden');
+}
+
+// ================================================================
+// SECTION 13: MINIMAP
+// ================================================================
+
+const minimapCanvas = document.getElementById('minimapCanvas');
+const mmCtx = minimapCanvas.getContext('2d');
+const MM_SIZE = 160;
+const MM_SCALE = MM_SIZE / ((GRID_W-1) * CELL + 40);
+const MM_OFFSET = MM_SIZE / 2;
+
+function worldToMM(x, z) {
+  return {
+    mx: x * MM_SCALE + MM_OFFSET,
+    mz: z * MM_SCALE + MM_OFFSET
+  };
+}
+
+function drawMinimap() {
+  mmCtx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+
+  // Background
+  mmCtx.fillStyle = 'rgba(5,10,20,0.9)';
+  mmCtx.fillRect(0, 0, MM_SIZE, MM_SIZE);
+
+  // Roads
+  mmCtx.strokeStyle = '#444456';
+  mmCtx.lineWidth = 4;
+  edges.forEach(e => {
+    const a = nodes[e.from], b = nodes[e.to];
+    const {mx: ax, mz: az} = worldToMM(a.x, a.z);
+    const {mx: bx, mz: bz} = worldToMM(b.x, b.z);
+    mmCtx.beginPath();
+    mmCtx.moveTo(ax, az);
+    mmCtx.lineTo(bx, bz);
+    mmCtx.stroke();
+  });
+
+  // Shortest path highlight
+  if (showingPath) {
+    mmCtx.strokeStyle = 'rgba(0,229,255,0.8)';
+    mmCtx.lineWidth = 3;
+    for (let i=0; i<shortestPath.length-1; i++) {
+      const a = nodes[shortestPath[i]], b = nodes[shortestPath[i+1]];
+      const {mx: ax, mz: az} = worldToMM(a.x, a.z);
+      const {mx: bx, mz: bz} = worldToMM(b.x, b.z);
+      mmCtx.beginPath();
+      mmCtx.moveTo(ax, az);
+      mmCtx.lineTo(bx, bz);
+      mmCtx.stroke();
+    }
+  }
+
+  // Intersections
+  mmCtx.fillStyle = '#333345';
+  nodes.forEach(n => {
+    const {mx, mz} = worldToMM(n.x, n.z);
+    mmCtx.fillRect(mx-2, mz-2, 4, 4);
+  });
+
+  // Traffic cars
+  mmCtx.fillStyle = 'rgba(255,200,0,0.8)';
+  trafficCars.forEach(tc => {
+    const {mx, mz} = worldToMM(tc.mesh.position.x, tc.mesh.position.z);
+    mmCtx.fillRect(mx-1.5, mz-1.5, 3, 3);
+  });
+
+  // START marker
+  const {mx: sx, mz: sz} = worldToMM(nodes[START_NODE].x, nodes[START_NODE].z);
+  mmCtx.fillStyle = '#00ff88';
+  mmCtx.fillRect(sx-4, sz-4, 8, 8);
+  mmCtx.fillStyle = '#fff';
+  mmCtx.font = 'bold 7px Orbitron, monospace';
+  mmCtx.fillText('S', sx-2.5, sz+2.5);
+
+  // END marker
+  const {mx: ex, mz: ez} = worldToMM(nodes[END_NODE].x, nodes[END_NODE].z);
+  mmCtx.fillStyle = '#ff6b00';
+  mmCtx.fillRect(ex-4, ez-4, 8, 8);
+  mmCtx.fillStyle = '#fff';
+  mmCtx.fillText('E', ex-2.5, ez+2.5);
+
+  // Player car
+  const {mx: px, mz: pz} = worldToMM(car.pos.x, car.pos.z);
+  mmCtx.save();
+  mmCtx.translate(px, pz);
+  mmCtx.rotate(car.angle);
+  mmCtx.fillStyle = '#ff3300';
+  mmCtx.shadowColor = '#ff3300';
+  mmCtx.shadowBlur = 6;
+  mmCtx.fillRect(-3, -5, 6, 10);
+  mmCtx.restore();
+}
+
+// ================================================================
+// SECTION 14: HUD UPDATE
+// ================================================================
+
+function updateHUD(dt) {
+  // Speed
+  const kmh = Math.abs(car.velocity) * 3.6;
+  document.getElementById('speedNum').textContent = Math.round(kmh);
+
+  // Speedometer arc
+  const arcMax = 126;
+  const arcVal = Math.min(kmh / (car.topSpeed * 3.6), 1);
+  document.getElementById('speedArcPath').setAttribute('stroke-dashoffset', arcMax - arcVal * arcMax);
+
+  // Gear
+  const gear = car.velocity < -0.5 ? 'R' : car.velocity < 1 ? 'N' : kmh < 30 ? '1' : kmh < 60 ? '2' : kmh < 90 ? '3' : '4';
+  document.getElementById('gearDisplay').textContent = `GEAR: ${gear}`;
+
+  // Timer
+  if (gameState === 'playing') {
+    timeLeft -= dt;
+    timeLeft = Math.max(0, timeLeft);
+    document.getElementById('timerValue').textContent = formatTime(timeLeft);
+    document.getElementById('timerValue').className = timeLeft < 15 ? 'urgent' : '';
+  }
+
+  // Distance to destination
+  const dx = car.pos.x - endNode.x;
+  const dz = car.pos.z - endNode.z;
+  const distToEnd = Math.sqrt(dx*dx + dz*dz);
+  const progress = Math.max(0, Math.min(1, 1 - distToEnd / maxDist));
+  document.getElementById('distFill').style.width = (progress * 100) + '%';
+  document.getElementById('distText').textContent = `${Math.round(distToEnd)}m to destination`;
+
+  // ETA based on current speed
+  if (kmh > 2) {
+    const etaSec = distToEnd / (car.velocity * Math.sign(car.velocity || 1));
+    document.getElementById('etaValue').textContent = formatTime(Math.max(0, etaSec));
+  } else {
+    document.getElementById('etaValue').textContent = '--:--';
+  }
+
+  // Compass rotation
+  const needle = document.getElementById('compassNeedle');
+  if (needle) {
+    needle.setAttribute('transform', `rotate(${-car.angle * 180/Math.PI},26,26)`);
+  }
+
+  // Animate markers
+  const t = performance.now() * 0.001;
+  startMarker.position.y = 1.5 + Math.sin(t * 2) * 0.3;
+  startMarker.rotation.y = t;
+  endMarker.position.y = 1.5 + Math.sin(t * 2 + 1) * 0.3;
+  endMarker.rotation.y = -t;
+
+  // Animate path objects — pulse stripes, wave arrows
+  pathObjects.forEach((o) => {
+    if (o.userData.pathSeg) {
+      // Stripe pulse: emissive brightness oscillates
+      o.material.emissiveIntensity = 0.8 + 0.6 * Math.sin(t * 3);
+      o.material.opacity = 0.7 + 0.2 * Math.sin(t * 3);
+    } else if (o.userData.glowSeg) {
+      o.material.opacity = 0.15 + 0.2 * Math.abs(Math.sin(t * 2));
+    } else if (o.userData.arrowIdx !== undefined) {
+      // Staggered wave effect along path
+      const phase = t * 4 - o.userData.arrowIdx * 0.4;
+      o.material.opacity = 0.5 + 0.5 * Math.abs(Math.sin(phase));
+      o.material.emissiveIntensity = 0.6 + 0.8 * Math.abs(Math.sin(phase));
+      o.position.y = 0.85 + 0.18 * Math.abs(Math.sin(phase));
+    } else if (o.userData.dotNode) {
+      o.material.emissiveIntensity = 1.0 + 0.8 * Math.sin(t * 4);
+      o.rotation.y = t * 1.5;
+    }
+  });
+}
+
+// ================================================================
+// TOAST NOTIFICATION
+// ================================================================
+function showToast(msg) {
+  const area = document.getElementById('toastArea');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  area.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ================================================================
+// SECTION 15: MAIN RENDER LOOP
+// ================================================================
+
+let lastTime = performance.now();
+
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+
+  const now = performance.now();
+  const dt = Math.min((now - lastTime) / 1000, 0.05); // cap at 50ms
+  lastTime = now;
+
+  if (gameState === 'playing') {
+    updateCar(dt);
+    updateTraffic(dt);
+    updateHUD(dt);
+    checkWinLose();
+  }
+
+  updateCamera();
+  drawMinimap();
+  renderer.render(scene, camera);
+}
+
+// ================================================================
+// INITIALIZATION
+// ================================================================
+
+// Setup initial camera
+camera.position.set(startNode.x, 20, startNode.z - 20);
+camera.lookAt(startNode.x, 0, startNode.z);
+
+// Initial timer display
+document.getElementById('timerValue').textContent = formatTime(totalTime);
+
+// Show shortest path distance in toast on load
+setTimeout(() => {
+  if (gameState === 'start') {
+    showToast(`⚡ Shortest Route: ${Math.round(shortestDist)}m — ETA: ${formatTime(estimatedTravelTime)}`);
+  }
+}, 2000);
+
+// Start loop
+gameLoop();
+
+/* ================================================================
+   HOW TO RUN:
+   1. Open this .html file in any modern browser (Chrome/Firefox/Edge)
+   2. No server needed — all resources loaded from CDN
+   3. Click "START MISSION" to begin
+   4. Drive from the green START marker to the orange END marker
+   5. Use "SHOW SHORTEST PATH" to highlight the Dijkstra-optimal route
+   6. Reach destination before the timer expires to WIN!
+
+   ALGORITHM SUMMARY:
+   - Dijkstra's: Finds shortest path between START and END nodes
+     in O((V+E) log V) time. Path cached via DP for efficiency.
+   - Divide & Conquer: World objects placed by recursively
+     subdividing the map into quadrants.
+   - Greedy: Traffic AI picks the next node closest to destination
+     at each intersection.
+   - Graph: Roads = edges (weighted by length), intersections = nodes.
+================================================================ */
+</script>
+</body>
+</html>
